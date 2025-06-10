@@ -5,11 +5,14 @@ WORKDIR /app
 # Copy source files first
 COPY . .
 
-# Install dependencies
-RUN npm install --production
+# Install all dependencies including devDependencies
+RUN npm install
 
 # Build TypeScript
 RUN npm run build
+
+# Clean up devDependencies
+RUN npm prune --production
 
 # Expose port and start application
 EXPOSE 3000

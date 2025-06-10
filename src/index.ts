@@ -1,6 +1,6 @@
 import { MessageHandler } from './handlers/messageHandler';
 import { Logger } from './utils/logger';
-import express from 'express';
+import express, { Request, Response } from 'express';
 import config from './config/config';
 
 const logger = new Logger('Main');
@@ -8,11 +8,11 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Health check endpoint
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
     res.send('Bot is running! 🤖');
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({ status: 'healthy' });
 });
 
