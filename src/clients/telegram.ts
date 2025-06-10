@@ -1,6 +1,7 @@
 import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions';
 import { Api } from 'telegram/tl';
+import bigInt from 'big-integer';
 import config from '../config/config';
 import { Logger } from '../utils/logger';
 
@@ -48,26 +49,62 @@ export class TelegramService {
         }
 
         try {
-            this.logger.info(`Attempting to send message to chat ${chatId}`);
-            
-            // Try to resolve the peer
             let peer;
             try {
                 peer = await this.client.getInputEntity(chatId);
-                this.logger.info('Resolved peer:', { peer });
             } catch (error) {
-                this.logger.error(`Failed to resolve peer for ${chatId}`, error);
-                // Try sending directly
-                const result = await this.client.sendMessage(chatId, { message });
-                this.logger.info(`Message sent directly to chat ${chatId}`, { result });
-                return true;
+                this.logger.info(`Resolving peer for ${chatId}`);
+                
+                try {
+                    // Try to get all dialogs first
+                    const dialogs = await this.client.getDialogs({});
+                    const targetDialog = dialogs.find(dialog => 
+                        dialog.entity?.id?.toString() === chatId
+                    );
+
+                    if (targetDialog?.entity) {
+                        peer = targetDialog.entity;
+                    } else {
+                        // If not in dialogs, try to get user info
+                        try {
+                            const user = await this.client.getEntity(chatId);
+                            if (user) {
+                                peer = user;
+                            }
+                        } catch (entityError) {
+                            // Last resort: Try to add as contact
+                            try {
+                                await this.client.invoke(new Api.contacts.ImportContacts({
+                                    contacts: [new Api.InputPhoneContact({
+                                        clientId: bigInt(0),
+                                        phone: chatId.toString(),
+                                        firstName: 'User',
+                                        lastName: chatId.toString()
+                                    })]
+                                }));
+                                
+                                peer = await this.client.getInputEntity(chatId);
+                            } catch (contactError) {
+                                this.logger.error(`Failed to resolve peer ${chatId}`);
+                            }
+                        }
+                    }
+                } catch (resolveError) {
+                    this.logger.error(`Failed to resolve peer ${chatId}`);
+                }
             }
 
-            const result = await this.client.sendMessage(peer, { message });
-            this.logger.info(`Message sent to chat ${chatId} through peer`, { result });
+            if (!peer) {
+                this.logger.error(`No valid peer found for ${chatId}`);
+                return false;
+            }
+
+            const inputEntity = await this.client.getInputEntity(peer);
+            const result = await this.client.sendMessage(inputEntity, { message });
+            this.logger.info(`Message sent to ${chatId}`);
             return true;
         } catch (error) {
-            this.logger.error(`Failed to send message to chat ${chatId}`, error);
+            this.logger.error(`Failed to send message to ${chatId}`);
             return false;
         }
     }
@@ -93,6 +130,23 @@ export class TelegramService {
         if (this.isConnected) {
             await this.client.disconnect();
             this.isConnected = false;
+        }
+    }
+
+    async addContact(userId: string) {
+        try {
+            const result = await this.client.invoke(new Api.contacts.AddContact({
+                id: userId,
+                firstName: 'User',
+                lastName: userId,
+                phone: '',
+                addPhonePrivacyException: true
+            }));
+            this.logger.info(`Added contact ${userId}`, { result });
+            return true;
+        } catch (error) {
+            this.logger.error(`Failed to add contact ${userId}`, error);
+            return false;
         }
     }
 }
