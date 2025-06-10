@@ -1,0 +1,26 @@
+{
+  "name": "telebot-ai",
+  "version": "1.0.0",
+  "description": "Telegram OpenAI Bridge Self Chatbot",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "generate-session": "ts-node src/utils/generate_session.ts"
+  },
+  "dependencies": {
+    "telegram": "^2.19.10",
+    "openai": "^4.20.1",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "input": "^1.0.1",
+    "envalid": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.2",
+    "ts-node": "^10.9.1"
+  }
+} 
